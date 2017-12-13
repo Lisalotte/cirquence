@@ -1,27 +1,17 @@
+/*
+** Introduction to Programming - final assignment
+** @author Monica Preller
+** @author Lisa Pothoven
+** @date 13-12-2017
+** @abstract This is the main file of our application called 'Cirquence'.
+*/
+
 CreateCircle musicCircle;
 Boolean draw = false;
 
-class CreateCircle {
-  float xpos;
-  float ypos;
-  float diam;
-  float colour;
-
-  CreateCircle(float x, float y, float size) {
-    xpos=x;
-    ypos=y;
-    diam=size;
-    draw = true;
-  }
-  void display() {
-    fill(255);
-    ellipse(xpos, ypos, diam, diam);
-  }
-}
-
-
 void setup() {
-  size (1280, 1024);
+  //size (1280, 1024);
+  fullScreen(); // Run the code at the full dimensions of the current screen
 }
 
 void draw() {
