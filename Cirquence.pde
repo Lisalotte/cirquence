@@ -1,99 +1,86 @@
 import processing.sound.*;
-TriOsc[] osc;
+SinOsc[] osc;
 
 CreateCircle[] musicCircles;
 
 Boolean draw = false;
-Boolean circleclick = true;
+Boolean circleClick = true;
+boolean drag = false;
+boolean circleCreation = false;
+int dragMe = 0;
 float savedX;
 float savedY;
 float backgroundHue=random(360);
 int diamMax=500;
-int circlecount=0;
+int circlecount;
 int circlemax=7;
 
 float [] groundTones = {440, 495, 264, 297, 330, 352, 396}; // A B C D E F G
 float [] scale;
 
-class CreateCircle {
-  float xpos;
-  float ypos;
-  float mouseRx;
-  float mouseRy;
-  float diam;
-  float ellipseSat;
-  float ellipseBright;
-
-  CreateCircle(float x, float y, float size) {
-    xpos=x;
-    ypos=y;
-    diam=size;
-    draw = true;
-    ellipseSat = 200;
-    ellipseBright=250;
-  }
-
-  void display() {
-    colorMode(HSB,255);
-    noStroke();
-    fill(backgroundHue, ellipseSat, ellipseBright);
-    ellipse(xpos, ypos, diam, diam);
-  }
-}
-
 void setup() {
-  //size (1280, 1024);
   size (600, 600);    
   colorMode(HSB,255);
-  background(backgroundHue, 200, 200);
 
-  musicCircles=new CreateCircle [circlemax];
-  osc = new TriOsc[circlemax];
+  musicCircles = new CreateCircle [circlemax];
+  osc = new SinOsc[circlemax];
   scale = new float[circlemax]; //triad
-}
-
-void draw() {
-  for (int i=0; i<circlemax; i++) {
-    if (musicCircles[i]!=null) {
-      musicCircles[i].display();
-    }
-  }
+  circlecount = 0;
 }
 
 void mousePressed() {
   draw = true;
+  for (int i = 0; i<circlemax; i++) {
+    if (musicCircles[i] != null) {
+      float A = pow(musicCircles[i].xpos - float(mouseX), 2f);
+      float B = pow(musicCircles[i].ypos - float(mouseY), 2f);
+      if (sqrt(A+B) <= musicCircles[i].diam) {
+        circleClick = true; 
+        dragMe = i;
+        return;
+      }
+    }
+  }
   if (circlecount < circlemax) {
     musicCircles[circlecount]=new CreateCircle(mouseX, mouseY, 10);
     musicCircles[circlecount].ellipseSat-=(circlecount*15);
     musicCircles[circlecount].ellipseBright+=(circlecount*5);
-    println (musicCircles[circlecount].ellipseSat);
-    println (musicCircles[circlecount].ellipseSat);
-    
+        
      // Create new sound oscillator
-    osc[circlecount] = new TriOsc(this);
+    osc[circlecount] = new SinOsc(this);
     if (circlecount == 0) {
       int rand = (int)random(groundTones.length);
       osc[circlecount].freq(groundTones[rand]);
       createScale(groundTones[rand]);
     } else {
       int rand = (int)random(scale.length);
+      musicCircles[circlecount].freq = scale[rand];
       osc[circlecount].freq(scale[rand]);
     }
     osc[circlecount].play();
+    musicCircles[circlecount].playing = true;
+    
+    circleCreation = true;
     
     circlecount++;
-  } else {
-    circleclick=false;
-  }
+  } 
 }
 
 void mouseDragged() {
-  if (circlecount>0 && circleclick==true) {
-    float superR=dist(musicCircles[circlecount-1].xpos, musicCircles[circlecount-1].ypos, mouseX, mouseY);
-    musicCircles[circlecount-1].diam=constrain(2*superR, 0, diamMax);
-  } else {
-    circleclick=false;
-  }
+  if (circlecount > 0 && circleClick) {
+    //float superR=dist(musicCircles[circlecount-1].xpos, musicCircles[circlecount-1].ypos, mouseX, mouseY);
+    //musicCircles[circlecount-1].diam=constrain(2*superR, 0, diamMax);
+    float A = pow(musicCircles[dragMe].xpos - float(mouseX), 2f);
+    float B = pow(musicCircles[dragMe].ypos - float(mouseY), 2f);
+    musicCircles[dragMe].diam = constrain(sqrt(A + B), 5, diamMax);
+   
+  } else if (circlecount > 0 && circleCreation) {
+    int cur = circlecount - 1;
+    
+    float A = pow(musicCircles[cur].xpos - float(mouseX), 2f);
+    float B = pow(musicCircles[cur].ypos - float(mouseY), 2f);
+    musicCircles[cur].diam = constrain(sqrt(A + B), 5, diamMax);
+  } 
 }
 
 void createScale(float groundFreq) {
@@ -103,7 +90,7 @@ void createScale(float groundFreq) {
   float a = pow(2f, 1f/12f);
   int rand = (int)random(2);
   
-  if (rand == 0) {
+  if (rand == 0) { // major
     scale[0] = groundFreq;
     scale[1] = groundFreq * pow(a, 4);
     scale[2] = groundFreq * pow(a, 7);
@@ -111,8 +98,7 @@ void createScale(float groundFreq) {
     scale[4] = groundFreq * pow(a, 16);
     scale[5] = groundFreq * pow(a, 19);
     scale[6] = groundFreq * pow(a, 24);
-  } else {
-    println("mineur");
+  } else { // minor
     scale[0] = groundFreq;
     scale[1] = groundFreq * pow(a, 3);
     scale[2] = groundFreq * pow(a, 6);
@@ -121,9 +107,39 @@ void createScale(float groundFreq) {
     scale[5] = groundFreq * pow(a, 18);
     scale[6] = groundFreq * pow(a, 24);
   }
-  println(rand);
-  
-  for (int i=0; i<scale.length; i++) {
-    println(scale[i]);
+}
+
+void draw() {
+  background(backgroundHue, 200, 200);
+  if (!mousePressed) {
+    if (circleClick && musicCircles[dragMe] != null) {
+      musicCircles[dragMe].counter = musicCircles[dragMe].len;
+      osc[dragMe].play();
+      musicCircles[dragMe].playing = true;
+    }
+    circleClick = false;
+    circleCreation = false;
+  }
+  for (int i=0; i<circlemax; i++) {
+    if (musicCircles[i]!=null) {
+      musicCircles[i].display();
+      musicCircles[i].count();
+      
+      // set the frequency and the amplitude of the oscillator
+      //osc[i].freq(musicCircles[i].freq);
+      osc[i].amp(musicCircles[i].diam / diamMax);
+      
+      // play in beeps instead of continuously
+      if (musicCircles[i].pulse && musicCircles[i].counter == 0) { 
+        // if we want to play pulses (beeps), do ...
+        if (musicCircles[i].playing) {
+          osc[i].stop();
+          musicCircles[i].playing = false;
+        } //else {
+        //  osc[i].play();
+        //  musicCircles[i].playing = true;
+       // }
+      }
+    }
   }
 }
